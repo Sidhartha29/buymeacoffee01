@@ -1,28 +1,40 @@
-import React, { useState } from 'react';
-import { Search, Send, MoreVertical, Phone, Video } from 'lucide-react';
-import { useMessages } from '../hooks/useMessages';
+import React, { useState } from "react";
+import { Search, Send, MoreVertical, Phone, Video } from "lucide-react";
+import { useMessages } from "../hooks/useMessages";
 
 export default function Messages() {
-  const { conversations, messages, sendMessage } = useMessages();
-  const [selectedConversation, setSelectedConversation] = useState(conversations[0]?.id || null);
-  const [newMessage, setNewMessage] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
+  const { conversations, sendMessage } = useMessages();
+  const [selectedConversation, setSelectedConversation] = useState<string | null>(
+    conversations[0]?.id || null
+  );
+  const [newMessage, setNewMessage] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
-  const filteredConversations = conversations.filter(conv =>
-    conv.user.name.toLowerCase().includes(searchQuery.toLowerCase())
+  // Filter conversations by participant name
+  const filteredConversations = conversations.filter((conv) =>
+    conv.participants
+      .some((p) =>
+        p.displayName.toLowerCase().includes(searchQuery.toLowerCase())
+      )
   );
 
-  const currentMessages = selectedConversation 
-    ? messages.filter(msg => msg.conversationId === selectedConversation)
-    : [];
+  // Current conversation
+  const currentConversation = conversations.find(
+    (conv) => conv.id === selectedConversation
+  );
 
-  const currentConversation = conversations.find(conv => conv.id === selectedConversation);
+  // Current messages
+  const currentMessages = currentConversation ? currentConversation.messages : [];
+
+  // Other participant (not current user "1")
+  const getOtherUser = (conv: any) =>
+    conv.participants.find((p: any) => p.id !== "1");
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (newMessage.trim() && selectedConversation) {
       sendMessage(selectedConversation, newMessage.trim());
-      setNewMessage('');
+      setNewMessage("");
     }
   };
 
@@ -55,47 +67,47 @@ export default function Messages() {
 
             {/* Conversations List */}
             <div className="flex-1 overflow-y-auto">
-              {filteredConversations.map((conversation) => (
-                <div
-                  key={conversation.id}
-                  onClick={() => setSelectedConversation(conversation.id)}
-                  className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
-                    selectedConversation === conversation.id ? 'bg-yellow-50 border-l-4 border-l-yellow-500' : ''
-                  }`}
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className="relative">
+              {filteredConversations.map((conversation) => {
+                const otherUser = getOtherUser(conversation);
+                const lastMessage =
+                  conversation.messages[conversation.messages.length - 1];
+
+                return (
+                  <div
+                    key={conversation.id}
+                    onClick={() => setSelectedConversation(conversation.id)}
+                    className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
+                      selectedConversation === conversation.id
+                        ? "bg-yellow-50 border-l-4 border-l-yellow-500"
+                        : ""
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3">
                       <img
-                        src={conversation.user.avatar}
-                        alt={conversation.user.name}
+                        src={otherUser?.avatar}
+                        alt={otherUser?.displayName}
                         className="w-12 h-12 rounded-full object-cover"
                       />
-                      {conversation.user.isOnline && (
-                        <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-medium text-gray-900 truncate">
-                          {conversation.user.name}
-                          {conversation.user.isVerified && (
-                            <span className="ml-1 text-yellow-500">✓</span>
-                          )}
-                        </h3>
-                        <span className="text-xs text-gray-500">{conversation.lastMessageTime}</span>
-                      </div>
-                      <p className="text-sm text-gray-600 truncate mt-1">{conversation.lastMessage}</p>
-                      {conversation.unreadCount > 0 && (
-                        <div className="mt-1">
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-500 text-black">
-                            {conversation.unreadCount}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-medium text-gray-900 truncate">
+                            {otherUser?.displayName}
+                            {otherUser?.isVerified && (
+                              <span className="ml-1 text-yellow-500">✓</span>
+                            )}
+                          </h3>
+                          <span className="text-xs text-gray-500">
+                            {new Date(conversation.updatedAt).toLocaleTimeString()}
                           </span>
                         </div>
-                      )}
+                        <p className="text-sm text-gray-600 truncate mt-1">
+                          {lastMessage?.content}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
@@ -108,20 +120,18 @@ export default function Messages() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                       <img
-                        src={currentConversation.user.avatar}
-                        alt={currentConversation.user.name}
+                        src={getOtherUser(currentConversation)?.avatar}
+                        alt={getOtherUser(currentConversation)?.displayName}
                         className="w-10 h-10 rounded-full object-cover"
                       />
                       <div>
                         <h2 className="font-medium text-gray-900">
-                          {currentConversation.user.name}
-                          {currentConversation.user.isVerified && (
+                          {getOtherUser(currentConversation)?.displayName}
+                          {getOtherUser(currentConversation)?.isVerified && (
                             <span className="ml-1 text-yellow-500">✓</span>
                           )}
                         </h2>
-                        <p className="text-sm text-gray-500">
-                          {currentConversation.user.isOnline ? 'Online' : 'Last seen recently'}
-                        </p>
+                        <p className="text-sm text-gray-500">Active recently</p>
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
@@ -143,20 +153,28 @@ export default function Messages() {
                   {currentMessages.map((message) => (
                     <div
                       key={message.id}
-                      className={`flex ${message.senderId === 'current-user' ? 'justify-end' : 'justify-start'}`}
+                      className={`flex ${
+                        message.senderId === "1"
+                          ? "justify-end"
+                          : "justify-start"
+                      }`}
                     >
                       <div
                         className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                          message.senderId === 'current-user'
-                            ? 'bg-yellow-500 text-black'
-                            : 'bg-gray-100 text-gray-900'
+                          message.senderId === "1"
+                            ? "bg-yellow-500 text-black"
+                            : "bg-gray-100 text-gray-900"
                         }`}
                       >
                         <p className="text-sm">{message.content}</p>
-                        <p className={`text-xs mt-1 ${
-                          message.senderId === 'current-user' ? 'text-black/70' : 'text-gray-500'
-                        }`}>
-                          {message.timestamp}
+                        <p
+                          className={`text-xs mt-1 ${
+                            message.senderId === "1"
+                              ? "text-black/70"
+                              : "text-gray-500"
+                          }`}
+                        >
+                          {new Date(message.createdAt).toLocaleTimeString()}
                         </p>
                       </div>
                     </div>
@@ -165,7 +183,10 @@ export default function Messages() {
 
                 {/* Message Input */}
                 <div className="bg-white border-t border-gray-200 p-4">
-                  <form onSubmit={handleSendMessage} className="flex items-center space-x-3">
+                  <form
+                    onSubmit={handleSendMessage}
+                    className="flex items-center space-x-3"
+                  >
                     <input
                       type="text"
                       value={newMessage}
@@ -189,8 +210,12 @@ export default function Messages() {
                   <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
                     <Send className="w-8 h-8 text-yellow-600" />
                   </div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">Select a conversation</h3>
-                  <p className="text-gray-500">Choose a conversation from the sidebar to start messaging</p>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    Select a conversation
+                  </h3>
+                  <p className="text-gray-500">
+                    Choose a conversation from the sidebar to start messaging
+                  </p>
                 </div>
               </div>
             )}
